@@ -1,0 +1,162 @@
+<?xml version="1.0" encoding="UTF-8" standalone="no"?><project>
+    <actions/>
+    <description>图计算</description>
+    <keepDependencies>false</keepDependencies>
+    <properties>
+        <com.sonyericsson.rebuild.RebuildSettings plugin="rebuild@1.25">
+            <autoRebuild>false</autoRebuild>
+            <rebuildDisabled>false</rebuildDisabled>
+        </com.sonyericsson.rebuild.RebuildSettings>
+        <jenkins.model.BuildDiscarderProperty>
+            <strategy class="hudson.tasks.LogRotator">
+                <daysToKeep>1</daysToKeep>
+                <numToKeep>5</numToKeep>
+                <artifactDaysToKeep>-1</artifactDaysToKeep>
+                <artifactNumToKeep>-1</artifactNumToKeep>
+            </strategy>
+        </jenkins.model.BuildDiscarderProperty>
+        <hudson.model.ParametersDefinitionProperty>
+            <parameterDefinitions>
+                <hudson.model.StringParameterDefinition>
+                    <name>git_path</name>
+                    <description>项目git地址</description>
+                    <defaultValue>http://gitlab.corp.11bee.com/nbdata/graphx.git</defaultValue>
+                </hudson.model.StringParameterDefinition>
+                <hudson.model.StringParameterDefinition>
+                    <name>git_branch</name>
+                    <description>git分支</description>
+                    <defaultValue/>
+                </hudson.model.StringParameterDefinition>
+                <hudson.model.StringParameterDefinition>
+                    <name>jar_name</name>
+                    <description>Maven Package打包后的jar名称</description>
+                    <defaultValue>sparkGraphx-1.0.0-SNAPSHOT-jar-with-dependencies</defaultValue>
+                </hudson.model.StringParameterDefinition>
+                <hudson.model.StringParameterDefinition>
+                    <name>main_class_path</name>
+                    <description>main函数入口</description>
+                    <defaultValue/>
+                </hudson.model.StringParameterDefinition>
+                <hudson.model.StringParameterDefinition>
+                    <name>driver_memory</name>
+                    <description>Spark Driver可分配的内存大小</description>
+                    <defaultValue>10g</defaultValue>
+                </hudson.model.StringParameterDefinition>
+                <hudson.model.StringParameterDefinition>
+                    <name>executor_memory</name>
+                    <description>Spark executor可分配的内存大小</description>
+                    <defaultValue>30g</defaultValue>
+                </hudson.model.StringParameterDefinition>
+                <hudson.model.StringParameterDefinition>
+                    <name>executor_overhead</name>
+                    <description>
+                        Spark executor可分配的堆外内存大小(和executor_memory之和不能超过48g)
+                    </description>
+                    <defaultValue>5g</defaultValue>
+                </hudson.model.StringParameterDefinition>
+                <hudson.model.ChoiceParameterDefinition>
+                    <name>queue</name>
+                    <description>使用的资源队列</description>
+                    <choices class="java.util.Arrays$ArrayList">
+                        <a class="string-array">
+                            <string>online</string>
+                            <string>offline</string>
+                        </a>
+                    </choices>
+                </hudson.model.ChoiceParameterDefinition>
+                <hudson.model.StringParameterDefinition>
+                    <name>yarn_submit_name</name>
+                    <description>任务名</description>
+                    <defaultValue>graphx</defaultValue>
+                </hudson.model.StringParameterDefinition>
+                <hudson.model.StringParameterDefinition>
+                    <name>user_params</name>
+                    <description>
+                        main函数参数，参考示例：http://wiki.corp.11bee.com/index.php?title=%E5%85%AC%E7%94%A8%E5%87%BD%E6%95%B0
+                    </description>
+                    <defaultValue>runType=incre sendReport=false</defaultValue>
+                </hudson.model.StringParameterDefinition>
+            </parameterDefinitions>
+        </hudson.model.ParametersDefinitionProperty>
+    </properties>
+    <scm class="hudson.plugins.git.GitSCM" plugin="git@3.0.1">
+        <configVersion>2</configVersion>
+        <userRemoteConfigs>
+            <hudson.plugins.git.UserRemoteConfig>
+                <url>${git_path}</url>
+                <credentialsId>2fd61080-56e2-48a1-ab0b-4196d7329215</credentialsId>
+            </hudson.plugins.git.UserRemoteConfig>
+        </userRemoteConfigs>
+        <branches>
+            <hudson.plugins.git.BranchSpec>
+                <name>${git_branch}</name>
+            </hudson.plugins.git.BranchSpec>
+        </branches>
+        <doGenerateSubmoduleConfigurations>false</doGenerateSubmoduleConfigurations>
+        <submoduleCfg class="list"/>
+        <extensions>
+            <hudson.plugins.git.extensions.impl.CleanBeforeCheckout/>
+        </extensions>
+    </scm>
+    <canRoam>true</canRoam>
+    <disabled>false</disabled>
+    <blockBuildWhenDownstreamBuilding>false</blockBuildWhenDownstreamBuilding>
+    <blockBuildWhenUpstreamBuilding>false</blockBuildWhenUpstreamBuilding>
+    <triggers/>
+    <concurrentBuild>false</concurrentBuild>
+    <builders>
+        <hudson.tasks.Shell>
+            <command>
+                /home/q/apache-maven/bin/mvn -U clean package -DskipTests -Dmaven.test.skip=true -Denforcer.skip=true
+            </command>
+        </hudson.tasks.Shell>
+        <jenkins.plugins.publish__over__ssh.BapSshBuilderPlugin plugin="publish-over-ssh@1.14">
+            <delegate>
+                <consolePrefix>SSH:</consolePrefix>
+                <delegate>
+                    <publishers>
+                        <jenkins.plugins.publish__over__ssh.BapSshPublisher>
+                            <configName>nbdata5</configName>
+                            <verbose>false</verbose>
+                            <transfers>
+                                <jenkins.plugins.publish__over__ssh.BapSshTransfer>
+                                    <remoteDirectory>spark/${BUILD_USER_ID}</remoteDirectory>
+                                    <sourceFiles>target/${jar_name}.jar</sourceFiles>
+                                    <excludes/>
+                                    <removePrefix>target</removePrefix>
+                                    <remoteDirectorySDF>false</remoteDirectorySDF>
+                                    <flatten>false</flatten>
+                                    <cleanRemote>false</cleanRemote>
+                                    <noDefaultExcludes>false</noDefaultExcludes>
+                                    <makeEmptyDirs>false</makeEmptyDirs>
+                                    <patternSeparator>[, ]+</patternSeparator>
+                                    <execCommand>
+                                        sudo -u hadoop /home/q/spark/bin/spark-submit --class $main_class_path --name
+                                        $yarn_submit_name@$BUILD_USER_ID --master yarn --deploy-mode cluster
+                                        --driver-memory $driver_memory --executor-memory $executor_memory --queue $queue
+                                        --conf spark.yarn.executor.memoryOverhead=$executor_overhead --conf
+                                        spark.executor.cores=4 --conf spark.executor.extraJavaOptions="-Xms25000m
+                                        -XX:+UseConcMarkSweepGC -XX:+UnlockCommercialFeatures -XX:+FlightRecorder"
+                                        /home/q/jenkins_jobs/spark/$BUILD_USER_ID/$jar_name.jar $user_params
+                                    </execCommand>
+                                    <execTimeout>120000</execTimeout>
+                                    <usePty>false</usePty>
+                                </jenkins.plugins.publish__over__ssh.BapSshTransfer>
+                            </transfers>
+                            <useWorkspaceInPromotion>false</useWorkspaceInPromotion>
+                            <usePromotionTimestamp>false</usePromotionTimestamp>
+                        </jenkins.plugins.publish__over__ssh.BapSshPublisher>
+                    </publishers>
+                    <continueOnError>false</continueOnError>
+                    <failOnError>false</failOnError>
+                    <alwaysPublishFromMaster>false</alwaysPublishFromMaster>
+                    <hostConfigurationAccess class="jenkins.plugins.publish_over_ssh.BapSshPublisherPlugin" reference="../.."/>
+                </delegate>
+            </delegate>
+        </jenkins.plugins.publish__over__ssh.BapSshBuilderPlugin>
+    </builders>
+    <publishers/>
+    <buildWrappers>
+        <org.jenkinsci.plugins.builduser.BuildUser plugin="build-user-vars-plugin@1.5"/>
+    </buildWrappers>
+</project>
