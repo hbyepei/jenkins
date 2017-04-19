@@ -10,7 +10,7 @@ import java.util.Map;
  * Description:
  */
 public class Jenkins {
-    public static final String defaultJenkinsServer = "http://jenkins.corp.11bee.com";
+    public static final String defaultJenkinsServer = "http://jenkins.corp.xxx.com";
     public static final String defaultJobName = "graphx";
 
     enum YarnQueue {
@@ -122,8 +122,8 @@ public class Jenkins {
 
     public static final class Builder {
         private String jenkinsUrl = defaultJenkinsServer;
-        private String gitPath = "http://gitlab.corp.11bee.com/nbdata/graphx.git";
-        private String jarName = "sparkGraphx-1.0.0-SNAPSHOT-jar-with-dependencies";
+        private String gitPath = "http://gitlab.corp.xxx.com/xxx.git";
+        private String jarName = "xxx-1.0.0-SNAPSHOT-jar-with-dependencies";
         private String jobName = defaultJobName;
         private String gitBranch = "master";
         private Class mainClass;
